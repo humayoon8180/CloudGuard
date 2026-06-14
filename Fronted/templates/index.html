@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudGuard AI - SOC Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <header>
+        <h1>CloudGuard AI</h1>
+        <div class="status-badge">Band Hub: Connected</div>
+    </header>
+
+    <div class="dashboard-container">
+        
+        <div class="panel threat-log">
+            <div class="panel-title">Incoming Threat Log</div>
+            <div class="panel-content" id="threat-container">
+                </div>
+        </div>
+
+        <div class="panel agent-timeline">
+            <div class="panel-title">Agent Activity Timeline (via Band API)</div>
+            <div class="panel-content" id="timeline-container">
+                </div>
+        </div>
+
+        <div class="panel remediation-output">
+            <div class="panel-title">Remediation Output</div>
+            <div class="panel-content" style="overflow: hidden;">
+                <div class="code-block" id="code-container"># Awaiting server deployment orchestrator commands...</div>
+                <div class="action-bar">
+                    <button class="btn-deploy" onclick="alert('Deploying Infrastructure via Terraform Server Pipeline...')">Approve & Deploy</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
