@@ -20,7 +20,8 @@ Output JSON Schema:
 import os
 import json
 import re
-from crewai import Agent, Task, Crew, Process, LLM
+from crewai import Agent, Task, Crew, Process
+from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -64,9 +65,9 @@ class ValidatorAgent:
     """
 
     def __init__(self):
-        self.llm = LLM(
-            model="groq/llama-3.3-70b-versatile",
-            temperature=0.0,  # Zero temp: deterministic safety decisions only
+        self.llm = ChatGroq(
+            model_name="llama-3.3-70b-versatile",
+            temperature=0.0,
         )
 
     def _get_agent(self) -> Agent:

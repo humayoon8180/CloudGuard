@@ -427,7 +427,7 @@ if __name__ == "__main__":
     else:
         sample_log = _get_sample_logs()[0]
 
-    print(f"{_YELLOW}📋 Processing Log:{_RESET}")
+    print(f"{_YELLOW}[*] Processing Log:{_RESET}")
     print(f"   {sample_log}\n")
 
     orchestrator = CloudGuardOrchestrator()
