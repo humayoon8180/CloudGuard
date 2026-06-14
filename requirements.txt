@@ -1,0 +1,24 @@
+# CloudGuard AI — Dependencies
+# ─────────────────────────────
+# Core AI / Agent Framework
+crewai>=0.80.0
+langchain>=0.3.0
+langchain-openai>=0.2.0
+
+# LLM Provider
+openai>=1.50.0
+
+# Band API Communication
+requests>=2.32.0
+
+# Environment / Config
+python-dotenv>=1.0.0
+
+# Observability (Optional — Langfuse tracing)
+langfuse>=2.0.0
+
+# Web Frontend (Optional — demo UI)
+flask>=3.0.0
+
+# Utilities
+colorama>=0.4.6

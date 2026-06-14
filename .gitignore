@@ -1,0 +1,100 @@
+# ─────────────────────────────────────────────
+# CloudGuard AI — .gitignore
+# ─────────────────────────────────────────────
+
+# ==========================
+# SECRETS — NEVER COMMIT
+# ==========================
+.env
+.env.*
+!.env.example
+
+# ==========================
+# Python
+# ==========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# ==========================
+# Virtual Environment
+# ==========================
+venv/
+env/
+ENV/
+.venv/
+.ENV/
+
+# ==========================
+# Distribution / Build
+# ==========================
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+MANIFEST
+
+# ==========================
+# Testing
+# ==========================
+.pytest_cache/
+.tox/
+.coverage
+coverage.xml
+htmlcov/
+*.coveragerc
+nosetests.xml
+
+# ==========================
+# Linting / Type Checking
+# ==========================
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# ==========================
+# Jupyter Notebooks
+# ==========================
+.ipynb_checkpoints/
+*.ipynb
+
+# ==========================
+# IDEs & Editors
+# ==========================
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# ==========================
+# Logs
+# ==========================
+*.log
+logs/
+*.out
+
+# ==========================
+# Terraform (generated IaC)
+# ==========================
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+
+# ==========================
+# Misc
+# ==========================
+*.tmp
+*.bak
+*.swp
