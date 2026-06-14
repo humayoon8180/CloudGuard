@@ -1,0 +1,234 @@
+:root {
+    --bg-dark: #0d1117;
+    --panel-bg: #161b22;
+    --border-color: #30363d;
+    --text-main: #c9d1d9;
+    --text-muted: #8b949e;
+    --accent-glow: #58a6ff;
+    --accent-green: #238636;
+    --accent-red: #da3633;
+    --accent-orange: #d29922;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Header Component */
+header {
+    background-color: var(--panel-bg);
+    border-bottom: 1px solid var(--border-color);
+    padding: 15px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+header h1 {
+    font-size: 1.5rem;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+header h1::before {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    background-color: var(--accent-glow);
+    border-radius: 50%;
+    box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.status-badge {
+    background: rgba(88, 166, 255, 0.1);
+    border: 1px solid var(--accent-glow);
+    color: var(--accent-glow);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: bold;
+}
+
+/* Layout Grid */
+.dashboard-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 20px;
+    padding: 20px;
+    flex-grow: 1;
+    height: calc(100vh - 70px);
+}
+
+/* Panel Archetype */
+.panel {
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.panel-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #fff;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-content {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+/* 1. Incoming Threat Log Section */
+.threat-log {
+    grid-column: 1 / 2;
+    grid-row: 1 / 3; 
+}
+
+.log-entry {
+    background: rgba(255, 255, 255, 0.02);
+    border-left: 4px solid var(--accent-red);
+    padding: 12px;
+    margin-bottom: 12px;
+    border-radius: 0 4px 4px 0;
+}
+
+.log-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+
+.timestamp { 
+    color: var(--text-muted); 
+}
+
+.severity { 
+    color: var(--accent-red); 
+    font-weight: bold; 
+}
+
+.log-body { 
+    font-family: 'Courier New', Courier, monospace; 
+    font-size: 0.9rem; 
+    color: #e6edf3; 
+}
+
+/* 2. Agent Activity Timeline Section */
+.agent-timeline {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 25px;
+    padding-bottom: 15px;
+    border-left: 2px solid var(--border-color);
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: var(--accent-orange);
+}
+
+.timeline-item.complete::before {
+    background-color: var(--accent-green);
+    box-shadow: 0 0 8px var(--accent-green);
+}
+
+.timeline-time { 
+    font-size: 0.8rem; 
+    color: var(--text-muted); 
+}
+
+.timeline-status { 
+    font-weight: 500; 
+    font-size: 0.95rem; 
+}
+
+/* 3. Remediation Output Section */
+.remediation-output {
+    grid-column: 2 / 3;
+    grid-row: 2 / 3;
+}
+
+.code-block {
+    background-color: #05070a;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 15px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.85rem;
+    color: #79c0ff;
+    white-space: pre-wrap;
+    height: calc(100% - 60px);
+    overflow-y: auto;
+}
+
+.action-bar {
+    margin-top: 15px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.btn-deploy {
+    background-color: var(--accent-green);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-deploy:hover {
+    background-color: #2ea44f;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar { 
+    width: 6px; 
+}
+
+::-webkit-scrollbar-track { 
+    background: var(--bg-dark); 
+}
+
+::-webkit-scrollbar-thumb { 
+    background: var(--border-color); 
+    border-radius: 3px; 
+}
