@@ -1,3 +1,11 @@
+import sys
+import os
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..")
+    )
+)
+
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 import time
@@ -12,57 +20,47 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 def index():
     return render_template('index.html')
 
-# Ek fake background thread jo real CrewAI agents ke logs ko simulate karega server se
-def run_crewai_simulation():
-    print("CrewAI Simulation Started Backend Par...")
-    time.sleep(3) # Initial delay
+from band_layer.state_manager import run_pipeline
+
+def send_alert_to_frontend(data):
+    """Callback function to push real-time events to the frontend via SocketIO"""
+    if data.get("type") == "remediation":
+        socketio.emit('remediation_ready', {
+            'code': data['code'],
+            'time': time.strftime('%I:%M:%S %p PKT'),
+            'status': data['status']
+        })
+    else:
+        socketio.emit('new_timeline_item', {
+            'time': time.strftime('%I:%M:%S %p PKT'),
+            'status': data['status'],
+            'complete': True
+        })
+
+def run_real_crewai_pipeline():
+    print("Real CloudGuard AI Pipeline Started Backend Par...")
     
-    # 1. Threat Log Alert
+    # 1. Initial Threat Alert
     socketio.emit('new_threat', {
-        'timestamp': time.strftime('%H:%M:%S'),
+        'timestamp': time.strftime('%I:%M:%S %p PKT'),
         'severity': 'CRITICAL',
-        'message': '[REAL-TIME SERVER ALERT] Unauthorized AssumeRole detected for Admin-Execution-Role via Band API webhook.'
+        'message': '[REAL-TIME SERVER ALERT] Unauthorized SQL Injection detected via WAF. Initiating AI Incident Response.'
     })
     
-    # 2. Scanner Agent Response
-    time.sleep(3)
-    socketio.emit('new_timeline_item', {
-        'time': time.strftime('%H:%M:%S'),
-        'status': '<b>Threat-Scanner Agent:</b> Incident broadcasted to Band Channel. Analysing impact score...',
-        'complete': True
-    })
-
-    # 3. Forensics Agent Response
-    time.sleep(4)
-    socketio.emit('new_timeline_item', {
-        'time': time.strftime('%H:%M:%S'),
-        'status': '<b>Forensics Agent:</b> Mapped compromised IAM credentials to malicious IP 198.51.100.42.',
-        'complete': True
-    })
-
-    # 4. DevOps Agent & Terraform Generation
-    time.sleep(4)
-    terraform_code = """# Auto-generated Remediation via Server CrewAI
-resource "aws_iam_role_policy" "isolate_attacker" {
-  name = "incident-isolation-policy"
-  role = "Admin-Execution-Role"
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{ Effect = "Deny", Action = "*", Resource = "*" }]
-  })
-}"""
-    socketio.emit('remediation_ready', {
-        'code': terraform_code,
-        'time': time.strftime('%H:%M:%S'),
-        'status': '<b>DevOps-Shield Agent:</b> Terraform isolation script generated successfully.'
-    })
+    # 2. Run real pipeline with callback
+    run_pipeline(send_alert_to_frontend)
 
 # Jab user dashboard open karega, toh backend activity auto-start ho jayegi
 @socketio.on('connect')
 def handle_connect():
     print('Frontend client server se connect ho gaya!')
     # Background thread start karte hain taake Flask freeze na ho
-    threading.Thread(target=run_crewai_simulation).start()
+    socketio.start_background_task(run_real_crewai_pipeline)
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=5000)
+    socketio.run(
+        app,
+        debug=True,
+        port=5000,
+        allow_unsafe_werkzeug=True
+    )

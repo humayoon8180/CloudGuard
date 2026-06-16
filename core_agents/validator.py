@@ -17,19 +17,18 @@ Output JSON Schema:
 }
 """
 
-import os
 import json
-import re
 from crewai import Agent, Task, Crew, Process
-from langchain_groq import ChatGroq
 from dotenv import load_dotenv
+
+from core_agents.base_agent import build_llm, extract_json, AGENT_DEFAULTS
 
 load_dotenv()
 
-_SYSTEM_PROMPT = """You are a meticulous Senior Cloud Security QA Engineer and IaC 
-Safety Auditor embedded in an automated deployment pipeline. You are the LAST line 
-of defense before infrastructure changes go live. Your job is to audit Terraform code 
-for catastrophic misconfigurations that could block entire internet ranges and take 
+_SYSTEM_PROMPT = """You are a meticulous Senior Cloud Security QA Engineer and IaC
+Safety Auditor embedded in an automated deployment pipeline. You are the LAST line
+of defense before infrastructure changes go live. Your job is to audit Terraform code
+for catastrophic misconfigurations that could block entire internet ranges and take
 down production systems. Return ONLY a valid JSON object — no prose, no markdown.
 
 AUDIT RULES — BLOCK deployment if code contains:
@@ -65,10 +64,7 @@ class ValidatorAgent:
     """
 
     def __init__(self):
-        self.llm = ChatGroq(
-            model_name="llama-3.3-70b-versatile",
-            temperature=0.0,
-        )
+        self.llm = build_llm(temperature=0.0)
 
     def _get_agent(self) -> Agent:
         return Agent(
@@ -86,8 +82,8 @@ class ValidatorAgent:
                 "any WAF rule goes live. You have zero tolerance for broad CIDR blocks — "
                 "a single /0 rule has taken down Fortune 500 companies before."
             ),
-            verbose=True,
             llm=self.llm,
+            **AGENT_DEFAULTS,
         )
 
     def _get_task(self, iac_payload: dict, agent: Agent) -> Task:
@@ -106,15 +102,6 @@ class ValidatorAgent:
             ),
             agent=agent,
         )
-
-    @staticmethod
-    def _extract_json(raw_output: str) -> dict:
-        """Robustly extracts a JSON object from LLM output."""
-        cleaned = re.sub(r"```(?:json)?", "", raw_output).strip()
-        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
-        raise ValueError(f"No valid JSON object found in output: {raw_output!r}")
 
     def run(self, iac_payload: dict) -> dict:
         """
@@ -137,13 +124,14 @@ class ValidatorAgent:
             agents=[agent],
             tasks=[task],
             process=Process.sequential,
+            memory=False,
         )
         result = crew.kickoff()
-        raw_text = result.raw if hasattr(result, "raw") else str(result)
-        return self._extract_json(raw_text)
+        return extract_json(result)
 
 
 if __name__ == "__main__":
+    import json
     sample_iac = {
         "incident_id": "INC-A1B2C3D4",
         "script_type": "Terraform",

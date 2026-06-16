@@ -9,22 +9,21 @@ Output JSON Schema:
     "incident_id": "<from input>",
     "script_type": "Terraform",
     "code": "<raw HCL terraform string>",
-    "target_ips": ["x.x.x.x", ...]
+    "target_ips": ["x.x.x.x/32", ...]
 }
 """
 
-import os
 import json
-import re
 from crewai import Agent, Task, Crew, Process
-from langchain_groq import ChatGroq
 from dotenv import load_dotenv
+
+from core_agents.base_agent import build_llm, extract_json, AGENT_DEFAULTS
 
 load_dotenv()
 
-_SYSTEM_PROMPT = """You are a senior DevSecOps Engineer and Terraform expert embedded in 
-an automated cloud remediation system. Your task is to generate production-grade, 
-deployable AWS WAF Terraform code to block malicious IP addresses. 
+_SYSTEM_PROMPT = """You are a senior DevSecOps Engineer and Terraform expert embedded in
+an automated cloud remediation system. Your task is to generate production-grade,
+deployable AWS WAF Terraform code to block malicious IP addresses.
 Return ONLY a valid JSON object — no prose, no markdown fences outside the JSON.
 
 TERRAFORM GENERATION RULES:
@@ -55,10 +54,7 @@ class CloudOpsRunnerAgent:
     """
 
     def __init__(self):
-        self.llm = ChatGroq(
-            model_name="llama-3.3-70b-versatile",
-            temperature=0.1,
-        )
+        self.llm = build_llm(temperature=0.1)
 
     def _get_agent(self) -> Agent:
         return Agent(
@@ -77,16 +73,28 @@ class CloudOpsRunnerAgent:
                 "before deployment. Every IP block you generate protects production "
                 "infrastructure from real-world attackers."
             ),
-            verbose=True,
             llm=self.llm,
+            **AGENT_DEFAULTS,
         )
 
-    def _get_task(self, policy_payload: dict, agent: Agent) -> Task:
+    def _get_task(self, incident_id: str, source_ips: list, agent: Agent) -> Task:
+        """
+        Builds the Terraform generation task.
+
+        Args:
+            incident_id: Unique incident identifier (e.g., "INC-A1B2C3D4").
+            source_ips: List of malicious IPs to block (e.g., ["198.51.100.23"]).
+            agent: The CrewAI agent to assign this task to.
+        """
+        context = {
+            "incident_id": incident_id,
+            "source_ips": source_ips,
+        }
         return Task(
             description=(
-                f"Generate an AWS WAFv2 Terraform ip_set block to block all IPs "
-                f"identified in the approved security action below.\n\n"
-                f"APPROVED POLICY DECISION:\n{json.dumps(policy_payload, indent=2)}\n\n"
+                f"Generate an AWS WAFv2 Terraform ip_set block to block the following "
+                f"confirmed malicious IP addresses.\n\n"
+                f"APPROVED BLOCK REQUEST:\n{json.dumps(context, indent=2)}\n\n"
                 f"SYSTEM INSTRUCTIONS:\n{_SYSTEM_PROMPT}"
             ),
             expected_output=(
@@ -98,15 +106,6 @@ class CloudOpsRunnerAgent:
             agent=agent,
         )
 
-    @staticmethod
-    def _extract_json(raw_output: str) -> dict:
-        """Robustly extracts a JSON object from LLM output."""
-        cleaned = re.sub(r"```(?:json)?", "", raw_output).strip()
-        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
-        raise ValueError(f"No valid JSON object found in output: {raw_output!r}")
-
     def run(self, policy_payload: dict) -> dict:
         """
         Executes the CloudOpsRunner CrewAI pipeline.
@@ -114,6 +113,7 @@ class CloudOpsRunnerAgent:
         Args:
             policy_payload: Approved policy decision dict from PolicyCheckerAgent.
                             Must have policy_check == "PASSED".
+                            Reads "incident_id" and "source_ips" keys.
 
         Returns:
             IaC dict with incident_id, script_type, code (HCL), and target_ips.
@@ -121,19 +121,24 @@ class CloudOpsRunnerAgent:
         Raises:
             ValueError: If the LLM output cannot be parsed as valid JSON.
         """
+        incident_id = policy_payload.get("incident_id", "UNKNOWN")
+        # Extract source_ips: prefer from forensics merge, fallback to empty list
+        source_ips = policy_payload.get("source_ips", [])
+
         agent = self._get_agent()
-        task = self._get_task(policy_payload, agent)
+        task = self._get_task(incident_id, source_ips, agent)
         crew = Crew(
             agents=[agent],
             tasks=[task],
             process=Process.sequential,
+            memory=False,
         )
         result = crew.kickoff()
-        raw_text = result.raw if hasattr(result, "raw") else str(result)
-        return self._extract_json(raw_text)
+        return extract_json(result)
 
 
 if __name__ == "__main__":
+    import json
     sample_policy = {
         "incident_id": "INC-A1B2C3D4",
         "policy_check": "PASSED",

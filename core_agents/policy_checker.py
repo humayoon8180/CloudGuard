@@ -13,17 +13,16 @@ Output JSON Schema:
 }
 """
 
-import os
 import json
-import re
 from crewai import Agent, Task, Crew, Process
-from langchain_groq import ChatGroq
 from dotenv import load_dotenv
+
+from core_agents.base_agent import build_llm, extract_json, AGENT_DEFAULTS
 
 load_dotenv()
 
-_SYSTEM_PROMPT = """You are a strict Enterprise Cloud Compliance and Zero-Trust Policy Engine 
-running inside an automated incident response system. You evaluate structured threat forensics 
+_SYSTEM_PROMPT = """You are a strict Enterprise Cloud Compliance and Zero-Trust Policy Engine
+running inside an automated incident response system. You evaluate structured threat forensics
 against zero-trust security policies. Return ONLY a valid JSON object — no prose, no markdown.
 
 ZERO-TRUST POLICY RULES:
@@ -60,10 +59,7 @@ class PolicyCheckerAgent:
     """
 
     def __init__(self):
-        self.llm = ChatGroq(
-            model_name="llama-3.3-70b-versatile",
-            temperature=0.2,
-        )
+        self.llm = build_llm(temperature=0.2)
 
     def _get_agent(self) -> Agent:
         return Agent(
@@ -81,8 +77,8 @@ class PolicyCheckerAgent:
                 "that authorize or block automated remediation actions. Your word is law — "
                 "no human override exists for clearly external, high-severity threats."
             ),
-            verbose=True,
             llm=self.llm,
+            **AGENT_DEFAULTS,
         )
 
     def _get_task(self, threat_payload: dict, agent: Agent) -> Task:
@@ -100,15 +96,6 @@ class PolicyCheckerAgent:
             ),
             agent=agent,
         )
-
-    @staticmethod
-    def _extract_json(raw_output: str) -> dict:
-        """Robustly extracts a JSON object from LLM output."""
-        cleaned = re.sub(r"```(?:json)?", "", raw_output).strip()
-        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
-        raise ValueError(f"No valid JSON object found in output: {raw_output!r}")
 
     def run(self, threat_payload: dict) -> dict:
         """
@@ -130,13 +117,14 @@ class PolicyCheckerAgent:
             agents=[agent],
             tasks=[task],
             process=Process.sequential,
+            memory=False,
         )
         result = crew.kickoff()
-        raw_text = result.raw if hasattr(result, "raw") else str(result)
-        return self._extract_json(raw_text)
+        return extract_json(result)
 
 
 if __name__ == "__main__":
+    import json
     sample_forensics = {
         "incident_id": "INC-A1B2C3D4",
         "attack_type": "SQLi",

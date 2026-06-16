@@ -14,19 +14,17 @@ Output JSON Schema:
 }
 """
 
-import os
 import uuid
-import json
-import re
 from crewai import Agent, Task, Crew, Process
-from langchain_groq import ChatGroq
 from dotenv import load_dotenv
+
+from core_agents.base_agent import build_llm, extract_json, AGENT_DEFAULTS
 
 load_dotenv()
 
-_SYSTEM_PROMPT = """You are an elite AWS Cloud Security Forensic Analyst embedded in an 
-automated incident response system. Your ONLY job is to parse raw security logs and 
-return a machine-readable JSON object. You must NEVER include explanations, markdown 
+_SYSTEM_PROMPT = """You are an elite AWS Cloud Security Forensic Analyst embedded in an
+automated incident response system. Your ONLY job is to parse raw security logs and
+return a machine-readable JSON object. You must NEVER include explanations, markdown
 fences, or prose. Return ONLY a valid JSON object.
 
 STRICT OUTPUT FORMAT (no deviations):
@@ -55,10 +53,7 @@ class ThreatHunterAgent:
     """
 
     def __init__(self):
-        self.llm = ChatGroq(
-            model_name="llama-3.3-70b-versatile",
-            temperature=0.2,
-        )
+        self.llm = build_llm(temperature=0.2)
 
     def _get_agent(self) -> Agent:
         return Agent(
@@ -75,8 +70,8 @@ class ThreatHunterAgent:
                 "structured intelligence from raw log noise. You communicate exclusively "
                 "through machine-readable JSON for downstream automated systems."
             ),
-            verbose=True,
             llm=self.llm,
+            **AGENT_DEFAULTS,
         )
 
     def _get_task(self, raw_log: str, agent: Agent) -> Task:
@@ -95,20 +90,6 @@ class ThreatHunterAgent:
             ),
             agent=agent,
         )
-
-    @staticmethod
-    def _extract_json(raw_output: str) -> dict:
-        """
-        Robustly extracts a JSON object from LLM output.
-        Handles markdown fences, trailing prose, and whitespace.
-        """
-        # Strip markdown code fences
-        cleaned = re.sub(r"```(?:json)?", "", raw_output).strip()
-        # Find the first valid JSON object
-        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
-        raise ValueError(f"No valid JSON object found in output: {raw_output!r}")
 
     def run(self, raw_log: str) -> dict:
         """
@@ -130,14 +111,14 @@ class ThreatHunterAgent:
             agents=[agent],
             tasks=[task],
             process=Process.sequential,
+            memory=False,
         )
         result = crew.kickoff()
-        raw_text = result.raw if hasattr(result, "raw") else str(result)
-        return self._extract_json(raw_text)
+        return extract_json(result)
 
 
 if __name__ == "__main__":
-    # Local smoke test
+    import json
     sample_log = (
         "2026-06-14T10:33:17Z WAF BLOCK action=BLOCK "
         "clientIP=198.51.100.23 uri=/login "

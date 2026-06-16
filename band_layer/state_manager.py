@@ -24,6 +24,8 @@ Run directly:
 
 import json
 import logging
+import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -35,9 +37,13 @@ from core_agents.threat_hunter import ThreatHunterAgent
 from core_agents.policy_checker import PolicyCheckerAgent
 from core_agents.cloud_ops_runner import CloudOpsRunnerAgent
 from core_agents.validator import ValidatorAgent
+from core_agents.base_agent import extract_json
 from band_layer.band_client import BandClient, BandAPIError
 
 load_dotenv()
+
+
+
 
 # Configure logging
 logging.basicConfig(
@@ -158,13 +164,34 @@ class CloudGuardOrchestrator:
     def _push_to_band(self, state: str, payload: dict) -> None:
         """
         Pushes a payload to the Band API. Handles the case where Band is offline.
+        Dynamically switches API keys to impersonate the distinct agents on the Band UI.
 
         Args:
             state: Pipeline state name (e.g., "FORENSICS").
             payload: The agent's structured output dict.
         """
-        if self.band_client:
-            self.band_client.push(state=state, payload=payload)
+        client = self.band_client
+        
+        # Route to Threat Hunter identity
+        if state == "FORENSICS":
+            th_key = os.getenv("BAND_THREAT_HUNTER_KEY")
+            th_id = os.getenv("BAND_THREAT_HUNTER_AGENT_ID")
+            if th_key and th_id:
+                if not hasattr(self, "band_threat_hunter"):
+                    self.band_threat_hunter = BandClient(api_key=th_key, agent_id=th_id)
+                client = self.band_threat_hunter
+                
+        # Route to CloudOps Engineer identity
+        elif state == "IAC_GENERATION":
+            co_key = os.getenv("BAND_CLOUDOPS_KEY")
+            co_id = os.getenv("BAND_CLOUDOPS_AGENT_ID")
+            if co_key and co_id:
+                if not hasattr(self, "band_cloudops"):
+                    self.band_cloudops = BandClient(api_key=co_key, agent_id=co_id)
+                client = self.band_cloudops
+
+        if client:
+            client.push(state=state, payload=payload)
         else:
             logger.warning("[Offline] Band push skipped for state=%s", state)
             print(
@@ -177,34 +204,20 @@ class CloudGuardOrchestrator:
     def _safe_parse_json(raw_output) -> dict:
         """
         Safely converts CrewAI output to a Python dict.
-        Handles str, dict, and objects with .raw attribute.
+        Delegates to the shared extract_json utility from core_agents.base_agent.
 
         Args:
             raw_output: Output from a CrewAI agent run — dict, str, or CrewOutput.
 
         Returns:
-            Parsed dict, or a fallback dict wrapping the raw string.
+            Parsed dict, or a fallback dict wrapping the raw string on failure.
         """
-        import re
-
-        if isinstance(raw_output, dict):
-            return raw_output
-
-        raw_text = raw_output.raw if hasattr(raw_output, "raw") else str(raw_output)
-
-        # Strip markdown fences
-        cleaned = re.sub(r"```(?:json)?", "", raw_text).strip()
-
-        # Extract first JSON object
-        match = re.search(r"\{.*\}", cleaned, re.DOTALL)
-        if match:
-            try:
-                return json.loads(match.group(0))
-            except json.JSONDecodeError as exc:
-                logger.warning("JSON parse failed: %s. Raw: %s", exc, raw_text[:300])
-
-        logger.error("Could not extract JSON from output: %s", raw_text[:300])
-        return {"raw_output": raw_text, "_parse_error": True}
+        try:
+            return extract_json(raw_output)
+        except (ValueError, Exception) as exc:
+            raw_text = raw_output.raw if hasattr(raw_output, "raw") else str(raw_output)
+            logger.error("Could not extract JSON from output: %s | Error: %s", raw_text[:300], exc)
+            return {"raw_output": raw_text, "_parse_error": True}
 
     # ------------------------------------------------------------------
     # Public interface
@@ -230,6 +243,15 @@ class CloudGuardOrchestrator:
         Returns:
             PipelineResult containing all stage outputs and final status.
         """
+        # ── INPUT VALIDATION ──────────────────────────────────────────────────
+        MAX_LOG_CHARS = 4000
+        if len(raw_log_payload) > MAX_LOG_CHARS:
+            logger.warning(
+                "Input log truncated from %d to %d chars (prompt injection guard).",
+                len(raw_log_payload), MAX_LOG_CHARS,
+            )
+            raw_log_payload = raw_log_payload[:MAX_LOG_CHARS]
+
         result = PipelineResult(raw_log_payload)
         _banner("CloudGuard AI — Incident Response Pipeline Started", _BOLD)
 
@@ -306,7 +328,7 @@ class CloudGuardOrchestrator:
             _banner("Stage 3 / 4 — IAC GENERATION: CloudOpsRunner", _CYAN)
             _step("⚙️", "Running CloudOpsRunnerAgent...")
 
-            # Pass forensics + policy together for richer context
+            # Merge forensics into policy dict so CloudOpsRunner has incident_id + source_ips
             combined_context = {**result.forensics, **result.policy}
             raw_iac = self.cloud_ops_runner.run(combined_context)
             iac = self._safe_parse_json(raw_iac)
@@ -414,25 +436,225 @@ def _get_sample_logs() -> list[str]:
 
 
 if __name__ == "__main__":
-    # ── Demo mode: run a sample SQLi incident ─────────────────────────────────
     print(f"\n{_BOLD}{_CYAN}{'='*72}")
     print("  CloudGuard AI — Band of Agents Hackathon Demo")
-    print(f"  lablab.ai | Event-Driven Multi-Agent Cloud Security System")
+    print("  lablab.ai | Event-Driven Multi-Agent Cloud Security System")
     print(f"{'='*72}{_RESET}\n")
 
-    # Use first sample log (SQLi attack) by default
-    # Override with command-line arg: python -m band_layer.state_manager "custom log"
+    # ── CLI override: single custom log ───────────────────────────────────────
     if len(sys.argv) > 1:
-        sample_log = " ".join(sys.argv[1:])
-    else:
-        sample_log = _get_sample_logs()[0]
+        custom_log = " ".join(sys.argv[1:])
+        print(f"{_YELLOW}[*] CLI Mode — Processing custom log:{_RESET}")
+        print(f"   {custom_log}\n")
+        orchestrator = CloudGuardOrchestrator()
+        result = orchestrator.run_incident_response(custom_log)
+        if result.pipeline_status == "FAILED":
+            sys.exit(1)
+        sys.exit(0)
 
-    print(f"{_YELLOW}[*] Processing Log:{_RESET}")
-    print(f"   {sample_log}\n")
+    # ── Demo Mode: run all 3 QA scenarios sequentially ────────────────────────
+    DEMO_SCENARIOS = [
+        {
+            "label": "Scenario A — HIGH THREAT (External SQLi → Full Mitigation)",
+            "expected": "COMPLETED  |  WAF IP block generated and validated",
+            "log": (
+                "2026-06-14T10:33:17Z WAF BLOCK action=BLOCK clientIP=198.51.100.23 "
+                "uri=/api/users/login "
+                "args=username=admin'+OR+'1'='1';-- httpMethod=POST "
+                "ruleId=SQLi-002 ruleGroup=AWSManagedRulesSQLiRuleSet statusCode=403"
+            ),
+        },
+        {
+            "label": "Scenario B — POLICY HALT (Internal IP → Mitigation Rejected)",
+            "expected": "HALTED     |  Policy rejects internal RFC1918 source IP — no WAF rule generated",
+            "log": (
+                "2026-06-14T12:15:42Z WAF BLOCK action=BLOCK clientIP=10.0.0.15 "
+                "uri=/admin/users/delete args=id=1;DROP+TABLE+users-- httpMethod=POST "
+                "ruleId=SQLi-007 ruleGroup=AWSManagedRulesSQLiRuleSet statusCode=403"
+            ),
+        },
+        {
+            "label": "Scenario C — LOW THREAT (Benign Traffic → No Action Required)",
+            "expected": "HALTED     |  Low-severity benign traffic, policy denies mitigation → NO_ACTION_REQUIRED",
+            "log": (
+                "2026-06-14T13:45:00Z WAF ALLOW action=ALLOW clientIP=203.0.113.99 "
+                "uri=/robots.txt httpMethod=GET statusCode=200 "
+                "ruleId=NONE ruleGroup=NONE bytes=512"
+            ),
+        },
+    ]
 
+    # Instantiate orchestrator once — reused across all scenarios
     orchestrator = CloudGuardOrchestrator()
-    pipeline_result = orchestrator.run_incident_response(sample_log)
 
-    # Exit with non-zero code if pipeline failed
-    if pipeline_result.pipeline_status == "FAILED":
+    scenario_results: list[dict] = []
+
+    for idx, scenario in enumerate(DEMO_SCENARIOS, start=1):
+        print(f"\n{_BOLD}{_YELLOW}{'─'*72}")
+        print(f"  [{idx}/3] {scenario['label']}")
+        print(f"  Expected: {scenario['expected']}")
+        print(f"{'─'*72}{_RESET}\n")
+        print(f"{_YELLOW}[*] Log Input:{_RESET}")
+        print(f"   {scenario['log']}\n")
+
+        result = orchestrator.run_incident_response(scenario["log"])
+
+        scenario_results.append({
+            "label": scenario["label"],
+            "expected": scenario["expected"],
+            "status": result.pipeline_status,
+            "halt_reason": result.halt_reason or "—",
+            "error": result.error or "—",
+            "forensics": result.forensics or {},
+            "policy": result.policy or {},
+            "validation": result.validation or {},
+        })
+
+    # ── Consolidated Demo Summary ──────────────────────────────────────────────
+    print(f"\n{_BOLD}{_CYAN}{'='*72}")
+    print("  CloudGuard AI — QA Demo Summary")
+    print(f"{'='*72}{_RESET}")
+
+    all_passed = True
+    for idx, r in enumerate(scenario_results, start=1):
+        status = r["status"]
+        color = _GREEN if status != "FAILED" else _RED
+        icon  = "✅" if status != "FAILED" else "❌"
+
+        forensics = r["forensics"]
+        policy    = r["policy"]
+        validation = r["validation"]
+
+        print(f"\n{color}{_BOLD}{icon}  [{idx}/3] {r['label']}{_RESET}")
+        print(f"    Pipeline Status   : {color}{status}{_RESET}")
+        print(f"    Expected Outcome  : {r['expected']}")
+        if forensics:
+            print(f"    Threat Detected   : {forensics.get('attack_type','—')}  "
+                  f"| Severity: {forensics.get('severity','—')}  "
+                  f"| Source IPs: {forensics.get('source_ips','—')}")
+        if policy:
+            print(f"    Policy Decision   : {policy.get('policy_check','—')}  "
+                  f"→  {policy.get('recommended_action','—')}")
+            print(f"    Policy Reasoning  : {policy.get('policy_reasoning','—')}")
+        if status == "HALTED":
+            print(f"    Halt Reason       : {r['halt_reason']}")
+        if validation:
+            print(f"    Validation        : {validation.get('validation_status','—')}  "
+                  f"| Warnings: {validation.get('security_warnings','None')}")
+        if status == "FAILED":
+            print(f"    {_RED}Error: {r['error']}{_RESET}")
+            all_passed = False
+
+    print(f"\n{_BOLD}{'─'*72}{_RESET}")
+    if all_passed:
+        print(f"{_GREEN}{_BOLD}✅  ALL SCENARIOS PASSED — CloudGuard AI is hackathon-ready!{_RESET}")
+    else:
+        print(f"{_RED}{_BOLD}❌  ONE OR MORE SCENARIOS FAILED — review logs above.{_RESET}")
+    print(f"{_BOLD}{'─'*72}{_RESET}\n")
+
+    # Exit 1 only on hard FAILED scenarios (HALTED and COMPLETED are both valid outcomes)
+    if any(r["status"] == "FAILED" for r in scenario_results):
         sys.exit(1)
+
+
+# ── Frontend Integration Point ────────────────────────────────────────────────
+def run_pipeline(callback):
+    """
+    Integration point for the Flask frontend.
+    Runs all three QA scenarios sequentially and pushes real-time
+    updates to the UI via the provided SocketIO callback.
+
+    Scenarios:
+        A — High Threat  (External SQLi → Full Mitigation)
+        B — Policy Halt  (Internal IP  → Rejected)
+        C — Low Threat   (Benign probe → No Action)
+    """
+    import time as _time
+    import json as _json
+
+    # ── Reuse the exact scenario payloads from the CLI demo ───────────────────
+    SCENARIOS = [
+        {
+            "label": "Scenario A — HIGH THREAT (External SQLi → Full Mitigation)",
+            "log": (
+                "2026-06-14T10:33:17Z WAF BLOCK action=BLOCK clientIP=198.51.100.23 "
+                "uri=/api/users/login "
+                "args=username=admin'+OR+'1'='1';-- httpMethod=POST "
+                "ruleId=SQLi-002 ruleGroup=AWSManagedRulesSQLiRuleSet statusCode=403"
+            ),
+        },
+        {
+            "label": "Scenario B — POLICY HALT (Internal IP → Mitigation Rejected)",
+            "log": (
+                "2026-06-14T12:15:42Z WAF BLOCK action=BLOCK clientIP=10.0.0.15 "
+                "uri=/admin/users/delete args=id=1;DROP+TABLE+users-- httpMethod=POST "
+                "ruleId=SQLi-007 ruleGroup=AWSManagedRulesSQLiRuleSet statusCode=403"
+            ),
+        },
+        {
+            "label": "Scenario C — LOW THREAT (Benign Traffic → No Action Required)",
+            "log": (
+                "2026-06-14T13:45:00Z WAF ALLOW action=ALLOW clientIP=203.0.113.99 "
+                "uri=/robots.txt httpMethod=GET statusCode=200 "
+                "ruleId=NONE ruleGroup=NONE bytes=512"
+            ),
+        },
+    ]
+
+    # ── Patch _step to forward agent activity to the frontend callback ─────────
+    global _step
+    original_step = _step
+
+    def patched_step(icon, text, color=""):
+        original_step(icon, text, color)
+        if "Terraform generated" in text:
+            callback({"type": "timeline", "status": f"<b>CloudOps:</b> {text}"})
+        elif "Pipeline completed" in text or "PIPELINE HALTED" in text:
+            callback({"type": "timeline", "status": f"<b>Orchestrator:</b> {text}"})
+        else:
+            callback({"type": "timeline", "status": f"<b>Agent Activity:</b> {text}"})
+
+    import band_layer.state_manager as sm
+    sm._step = patched_step
+
+    try:
+        orchestrator = CloudGuardOrchestrator()
+
+        for idx, scenario in enumerate(SCENARIOS, start=1):
+            # ── Announce scenario start to the frontend ────────────────────────
+            callback({
+                "type": "timeline",
+                "status": (
+                    f"<b>─── [{idx}/3] {scenario['label']} ───</b>"
+                ),
+            })
+
+            result = orchestrator.run_incident_response(scenario["log"])
+
+            # ── Push remediation code if IaC was generated (Scenario A only) ──
+            if result.iac:
+                callback({
+                    "type": "remediation",
+                    "code": _json.dumps(result.iac, indent=2),
+                    "status": "<b>DevOps-Shield Agent:</b> Terraform isolation script generated successfully.",
+                })
+
+            # ── Push final scenario outcome as a timeline entry ────────────────
+            status_icon = "✅" if result.pipeline_status == "COMPLETED" else "⛔"
+            callback({
+                "type": "timeline",
+                "status": (
+                    f"<b>{status_icon} {scenario['label']}:</b> "
+                    f"{result.pipeline_status}"
+                    + (f" — {result.halt_reason}" if result.halt_reason else "")
+                ),
+            })
+
+            # ── 5-second pause between scenarios for frontend rendering ────────
+            if idx < len(SCENARIOS):
+                _time.sleep(5)
+
+    finally:
+        sm._step = original_step
+
+

@@ -1,12 +1,10 @@
-# CloudGuard AI — Dependencies
-# ─────────────────────────────
+# CloudGuard AI — Python Dependencies
+# ─────────────────────────────────────
 # Core AI / Agent Framework
 crewai>=0.80.0
-langchain>=0.3.0
-langchain-openai>=0.2.0
 
-# LLM Provider
-openai>=1.50.0
+# LLM Provider — Groq (llama-3.3-70b-versatile)
+groq>=0.9.0
 
 # Band API Communication
 requests>=2.32.0

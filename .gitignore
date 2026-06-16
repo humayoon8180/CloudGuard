@@ -82,6 +82,7 @@ Thumbs.db
 *.log
 logs/
 *.out
+.crewai_storage/
 
 # ==========================
 # Terraform (generated IaC)
