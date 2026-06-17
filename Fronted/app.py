@@ -10,10 +10,16 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 import time
 import threading
+from dotenv import load_dotenv
 
+load_dotenv()
+
+import litellm
+litellm.success_callback = ["langfuse"]
+litellm.failure_callback = ["langfuse"]
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'cloudguard_secret!'
-# SocketIO initialize kiya taake real-time data stream ho sake
+# Initialize SocketIO for real-time data streaming between backend and frontend
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 @app.route('/')
@@ -38,7 +44,8 @@ def send_alert_to_frontend(data):
         })
 
 def run_real_crewai_pipeline():
-    print("Real CloudGuard AI Pipeline Started Backend Par...")
+    """Starts the real CloudGuard AI pipeline on the backend."""
+    print("Real CloudGuard AI Pipeline Started in Backend...")
     
     # 1. Initial Threat Alert
     socketio.emit('new_threat', {
@@ -50,11 +57,14 @@ def run_real_crewai_pipeline():
     # 2. Run real pipeline with callback
     run_pipeline(send_alert_to_frontend)
 
-# Jab user dashboard open karega, toh backend activity auto-start ho jayegi
+# Handle frontend client connection
 @socketio.on('connect')
 def handle_connect():
-    print('Frontend client server se connect ho gaya!')
-    # Background thread start karte hain taake Flask freeze na ho
+    print('Frontend client connected successfully!')
+
+@socketio.on('trigger_scenario')
+def handle_trigger_scenario():
+    print('Simulating Threat Scenario A via frontend trigger...')
     socketio.start_background_task(run_real_crewai_pipeline)
 
 if __name__ == '__main__':

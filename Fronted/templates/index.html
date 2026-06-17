@@ -16,23 +16,28 @@
     <div class="dashboard-container">
         
         <div class="panel threat-log">
-            <div class="panel-title">Incoming Threat Log</div>
+            <div class="panel-title">
+                Incoming Threat Log
+                <button id="btn-simulate" onclick="simulateThreat()" style="background-color: var(--accent-red); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: bold;">Simulate Threat (Scenario A)</button>
+            </div>
             <div class="panel-content" id="threat-container">
-                </div>
+                <div id="idle-threats" style="color:var(--text-muted); font-style:italic; padding:10px;">System Idle. Awaiting Network Telemetry...</div>
+            </div>
         </div>
 
         <div class="panel agent-timeline">
             <div class="panel-title">Agent Activity Timeline (via Band API)</div>
             <div class="panel-content" id="timeline-container">
-                </div>
+                <div id="idle-timeline" style="color:var(--text-muted); font-style:italic; padding:10px;">System Idle. Awaiting Network Telemetry...</div>
+            </div>
         </div>
 
         <div class="panel remediation-output">
             <div class="panel-title">Remediation Output</div>
             <div class="panel-content" style="overflow: hidden;">
-                <div class="code-block" id="code-container"># Awaiting server deployment orchestrator commands...</div>
+                <div class="code-block" id="code-container"># System Idle. Awaiting Network Telemetry...</div>
                 <div class="action-bar">
-                    <button class="btn-deploy" onclick="alert('Deploying Infrastructure via Terraform Server Pipeline...')">Approve & Deploy</button>
+                    <button class="btn-deploy" id="btn-deploy" disabled style="opacity: 0.5; cursor: not-allowed;" onclick="deployInfrastructure()">Approve & Deploy</button>
                 </div>
             </div>
         </div>

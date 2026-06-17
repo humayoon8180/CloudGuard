@@ -104,7 +104,6 @@ class BandClient:
         handle = self._agent_identity.get("data", {}).get("name", "CloudGuard AI")
         self.agent_name = handle
         self.owner_uuid = self._agent_identity.get("data", {}).get("owner_uuid")
-        self.owner_uuid = self._agent_identity.get("data", {}).get("owner_uuid")
         logger.info("[BandClient] Connected to Band API as agent: %s", handle)
 
     # ------------------------------------------------------------------

@@ -12,11 +12,13 @@ requests>=2.32.0
 # Environment / Config
 python-dotenv>=1.0.0
 
-# Observability (Optional — Langfuse tracing)
-langfuse>=2.0.0
+# Observability
+langfuse<3.0.0
+litellm>=1.0.0
 
-# Web Frontend (Optional — demo UI)
+# Web Frontend
 flask>=3.0.0
+flask-socketio>=5.3.0
 
 # Utilities
 colorama>=0.4.6
