@@ -1,5 +1,10 @@
 import sys
 import os
+
+# FIX FOR WINDOWS CRASH: Prevent OpenBLAS Memory Allocation Error
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+
 sys.path.append(
     os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..")

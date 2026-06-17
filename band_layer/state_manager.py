@@ -25,6 +25,11 @@ Run directly:
 import json
 import logging
 import os
+
+# FIX FOR WINDOWS CRASH: Prevent OpenBLAS Memory Allocation Error
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+
 import re
 import sys
 import time
