@@ -74,7 +74,7 @@ cp .env.example .env
 ### Starting the System
 Launch the Flask frontend dashboard, which automatically connects to Langfuse via LiteLLM:
 ```bash
-python Fronted/app.py
+python Frontend/app.py
 ```
 Open your browser to `http://127.0.0.1:5000`. 
 

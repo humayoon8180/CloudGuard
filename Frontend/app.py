@@ -12,10 +12,13 @@ sys.path.append(
 )
 
 from flask import Flask, render_template
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO
 import time
 import threading
 from dotenv import load_dotenv
+from observability.logger import get_logger
+
+logger = get_logger(__name__)
 
 load_dotenv()
 
@@ -65,11 +68,11 @@ def run_real_crewai_pipeline():
 # Handle frontend client connection
 @socketio.on('connect')
 def handle_connect():
-    print('Frontend client connected successfully!')
+    logger.info('Frontend client connected successfully!')
 
 @socketio.on('trigger_scenario')
 def handle_trigger_scenario():
-    print('Simulating Threat Scenario A via frontend trigger...')
+    logger.info('Simulating Threat Scenario A via frontend trigger...')
     socketio.start_background_task(run_real_crewai_pipeline)
 
 if __name__ == '__main__':
