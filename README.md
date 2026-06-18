@@ -1,87 +1,426 @@
 # 🛡️ CloudGuard AI
 
-**Event-Driven Multi-Agent Cloud Security Operations Center (SOC)**
-**Built for the Band of Agents Hackathon 2026**
-**Track 3: Regulated & High-Stakes Workflows (Human-in-the-Loop)**
+## AI-Powered Multi-Agent Cloud Security Operations Center
+
+### Event-Driven Threat Detection, Compliance Validation & Human-Approved Cloud Remediation
+
+**Band of Agents Hackathon 2026**
+**Track 3: Regulated & High-Stakes Workflows**
 
 ---
 
-## 🚀 Catchy Project Overview
-CloudGuard AI is a state-of-the-art, multi-agent AI Security Operations Center. It ingests raw network telemetry (like AWS WAF logs), performs deep forensic analysis, evaluates enterprise compliance policies, and dynamically generates Infrastructure-as-Code (Terraform) to mitigate active threats in real time. 
+# 🚀 Executive Summary
 
-All agent collaboration and human-in-the-loop approvals are orchestrated securely and visibly through the **Band.ai** collaborative platform and a purpose-built real-time Flask Web Dashboard.
+CloudGuard AI is an enterprise-grade, event-driven Security Operations Center (SOC) powered by collaborating AI agents.
 
----
+The platform continuously analyzes cloud security telemetry, identifies active threats, validates them against compliance policies, generates Infrastructure-as-Code (Terraform) remediations, and routes every action through a mandatory Human-in-the-Loop approval process before deployment.
 
-## ⚖️ Track 3 Justification (Regulated Workflows)
-CloudGuard AI is custom-built for high-stakes enterprise environments where AI is strictly prohibited from unilaterally altering production cloud infrastructure. 
-Instead of fully autonomous deployments, the pipeline explicitly terminates by locking the generated Terraform remediation code behind a strict **Human-in-the-Loop** approval gate on our Flask dashboard. Furthermore, the system employs a dedicated `ValidatorAgent` to enforce strict QA (like CIDR validation) before the code even reaches a human operator.
+Unlike autonomous security systems that can introduce operational risk, CloudGuard AI is designed specifically for regulated environments where AI recommendations must remain transparent, auditable, and human-governed.
 
 ---
 
-## 🏗️ Architecture & Agent Responsibilities
-The system orchestrates four strictly isolated CrewAI agents via a central State Manager. 
-**Crucially, `memory=False` is enforced on all agents** to guarantee zero hallucination during high-stakes IaC generation.
+# 🎯 The Problem
 
-1. **Threat Hunter (`ThreatHunterAgent`)**: Parses unstructured security logs. Extracts attack signatures, malicious IPs, and assigns confidence scores.
-2. **Policy Checker (`PolicyCheckerAgent`)**: Evaluates forensics against strict corporate compliance rules (e.g., ignoring internal IPs). Can halt the pipeline if the threat does not meet mitigation thresholds.
-3. **CloudOps Engineer (`CloudOpsRunnerAgent`)**: Generates remediation scripts (Terraform/AWS WAF Rules) to isolate verified threats.
-4. **DevOps Validator (`ValidatorAgent`)**: Audits the generated IaC for safety before presenting it for human approval.
+Modern security teams face three critical challenges:
+
+* Massive volumes of cloud security telemetry
+* Alert fatigue caused by noisy detections
+* Slow incident response during active attacks
+
+Security analysts often spend valuable time manually:
+
+1. Investigating attack indicators
+2. Verifying policy compliance
+3. Creating remediation rules
+4. Reviewing infrastructure changes
+
+This delay increases organizational exposure and operational risk.
 
 ---
 
-## 🤝 Band.ai Collaboration Flow
-Rather than acting as a black box, CloudGuard AI leverages **Dynamic Identity Routing** via the Band API to make multi-agent collaboration irrefutable.
-- The Orchestrator hot-swaps `X-API-Key` and `X-Agent-Id` headers during runtime.
-- As each stage completes, the responsible agent explicitly posts a `tool_result` event to the Band Chat Room.
-- Each agent's message appears under their distinct Persona in the UI.
-- **Band acts as the Collaboration Layer**, providing full visibility into the AI handoff chain.
+# 💡 Our Solution
+
+CloudGuard AI transforms incident response into a collaborative AI workflow.
+
+Instead of a single monolithic AI model, specialized agents work together to:
+
+✅ Detect threats from raw cloud logs
+
+✅ Validate attacks against compliance policies
+
+✅ Generate safe Terraform remediations
+
+✅ Audit generated infrastructure changes
+
+✅ Require explicit human approval before deployment
+
+The result is a transparent, auditable, and enterprise-ready security automation pipeline.
 
 ---
 
-## 🛠️ Setup Instructions & Environment Variables
+# 🏆 Why This Fits Track 3
 
-### 1. Prerequisites
-Ensure you have Python 3.10+ installed.
+## Regulated & High-Stakes Workflow by Design
 
-### 2. Installation
-Create a virtual environment and install the strict dependencies:
+Cloud infrastructure modifications are inherently high-risk.
+
+A single incorrect firewall rule can:
+
+* Block legitimate users
+* Disrupt production services
+* Create compliance violations
+
+For this reason, CloudGuard AI intentionally prevents autonomous deployment.
+
+### Safety Layers
+
+#### Layer 1: Policy Enforcement
+
+The Policy Checker validates findings against organizational security policies.
+
+#### Layer 2: Infrastructure Validation
+
+The Validator Agent audits generated Terraform for correctness and safety.
+
+#### Layer 3: Human-in-the-Loop Approval
+
+No infrastructure change can be deployed without explicit operator approval through the dashboard.
+
+This architecture ensures AI remains accountable, explainable, and governed.
+
+---
+
+# 🤖 Multi-Agent Architecture
+
+CloudGuard AI uses four isolated CrewAI agents coordinated through a centralized state manager.
+
+To minimize hallucination risk during infrastructure generation:
+
+```python
+memory=False
+```
+
+is enforced across all agents.
+
+## 1️⃣ ThreatHunterAgent
+
+### Mission
+
+Analyze raw security telemetry.
+
+### Responsibilities
+
+* Parse AWS WAF logs
+* Detect attack patterns
+* Extract malicious IPs
+* Identify attack vectors
+* Assign confidence scores
+
+### Output
+
+Structured forensic intelligence
+
+---
+
+## 2️⃣ PolicyCheckerAgent
+
+### Mission
+
+Enforce enterprise compliance policies.
+
+### Responsibilities
+
+* Evaluate attack severity
+* Ignore trusted/internal IP ranges
+* Validate mitigation thresholds
+* Prevent unnecessary remediation
+
+### Output
+
+Approve or halt workflow
+
+---
+
+## 3️⃣ CloudOpsRunnerAgent
+
+### Mission
+
+Generate cloud remediation actions.
+
+### Responsibilities
+
+* Create Terraform code
+* Generate AWS WAF rules
+* Produce deployable Infrastructure-as-Code
+
+### Output
+
+Terraform remediation package
+
+---
+
+## 4️⃣ ValidatorAgent
+
+### Mission
+
+Perform infrastructure QA.
+
+### Responsibilities
+
+* Validate CIDR blocks
+* Verify Terraform syntax
+* Detect unsafe configurations
+* Prevent invalid deployments
+
+### Output
+
+Audited deployment artifact
+
+---
+
+# 🔄 End-to-End Workflow
+
+```text
+AWS WAF Logs
+      │
+      ▼
+ThreatHunterAgent
+      │
+      ▼
+PolicyCheckerAgent
+      │
+      ▼
+CloudOpsRunnerAgent
+      │
+      ▼
+ValidatorAgent
+      │
+      ▼
+Human Approval Dashboard
+      │
+      ▼
+Deploy
+```
+
+---
+
+# 🤝 Band.ai Collaboration Layer
+
+A key innovation of CloudGuard AI is the use of Band.ai as the collaboration fabric between agents.
+
+Rather than operating as a black-box workflow, every handoff is visible and attributable.
+
+## Dynamic Identity Routing
+
+The orchestrator dynamically switches:
+
+* X-API-Key
+* X-Agent-Id
+
+for each agent execution.
+
+As tasks complete, agents publish structured:
+
+```json
+tool_result
+```
+
+events directly into the Band Chat Room.
+
+This creates a real-time audit trail showing:
+
+* Which agent performed each action
+* What information was produced
+* When handoffs occurred
+
+Judges can observe the complete decision-making chain live.
+
+---
+
+# 📊 Real-Time Dashboard
+
+The Flask dashboard serves as the operational command center.
+
+### Features
+
+* Live workflow visualization
+* WebSocket event streaming
+* Threat status tracking
+* Terraform review panel
+* Human approval controls
+* Deployment readiness indicators
+
+System state transitions:
+
+```text
+IDLE
+ ↓
+THREAT DETECTED
+ ↓
+ANALYZING
+ ↓
+VALIDATING
+ ↓
+AWAITING APPROVAL
+ ↓
+DEPLOYED
+```
+
+---
+
+# 🛠️ Technology Stack
+
+| Layer                     | Technology             |
+| ------------------------- | ---------------------- |
+| Multi-Agent Framework     | CrewAI                 |
+| LLM Inference             | Llama 3.3 70B via Groq |
+| Collaboration Layer       | Band.ai                |
+| Backend                   | Flask                  |
+| Real-Time Updates         | WebSockets             |
+| Infrastructure Automation | Terraform              |
+| Cloud Security            | AWS WAF                |
+| Observability             | Langfuse               |
+| LLM Gateway               | LiteLLM                |
+
+---
+
+# 🔐 Security & Reliability Principles
+
+CloudGuard AI was designed around enterprise safety requirements.
+
+### Principles
+
+* Human approval required for deployment
+* Agent isolation
+* Infrastructure validation
+* Compliance-first decisions
+* Full auditability
+* Explainable AI workflow
+* Zero autonomous production changes
+
+---
+
+# ⚙️ Setup
+
+## Prerequisites
+
+* Python 3.10+
+* Groq API Key
+* Band.ai Credentials
+* Langfuse Credentials
+
+## Installation
+
 ```bash
+git clone <repository>
+cd CloudGuardAI
+
 python -m venv venv
-# On Windows
+
+# Windows
 venv\Scripts\activate
-# On macOS/Linux
+
+# macOS/Linux
 source venv/bin/activate
 
 pip install -r requirements.txt
 ```
 
-### 3. Environment Variables
-Copy `.env.example` to `.env` and fill in your API keys:
+---
+
+# 🔑 Environment Variables
+
+Create a `.env` file:
+
 ```bash
 cp .env.example .env
 ```
-**Required Keys:**
-- `GROQ_API_KEY`: For the Llama-3.3-70b inference engine.
-- `BAND_API_KEY` / `BAND_AGENT_ID`: Main orchestrator identity.
-- `BAND_THREAT_HUNTER_KEY` / `BAND_CLOUDOPS_KEY`: Specialized agent identities.
-- `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY`: For enterprise telemetry.
+
+Required variables:
+
+```env
+GROQ_API_KEY=
+
+BAND_API_KEY=
+BAND_AGENT_ID=
+
+BAND_THREAT_HUNTER_KEY=
+BAND_CLOUDOPS_KEY=
+
+LANGFUSE_PUBLIC_KEY=
+LANGFUSE_SECRET_KEY=
+```
 
 ---
 
-## 🏁 Run & Demo Instructions
+# ▶️ Running the Demo
 
-### Starting the System
-Launch the Flask frontend dashboard, which automatically connects to Langfuse via LiteLLM:
+Launch the dashboard:
+
 ```bash
 python Frontend/app.py
 ```
-Open your browser to `http://127.0.0.1:5000`. 
 
-### The Demo Loop
-1. The dashboard opens in an **IDLE** state.
-2. Click **Simulate Threat (Scenario A)** to inject a simulated external SQLi attack.
-3. Watch the WebSockets stream live updates as the four agents process the threat.
-4. Concurrently, view your **Band Chat Room** to see the agents collaborating with distinct identities via `tool_result` events.
-5. Once the pipeline completes, review the audited Terraform code and click **Approve & Deploy**.
-*(Note: Scenarios B and C can be manually triggered in the backend for testing Policy Halts and Benign Traffic).*
+Open:
+
+```text
+http://127.0.0.1:5000
+```
+
+---
+
+# 🎬 Demo Scenario
+
+### Scenario A — External SQL Injection Attack
+
+1. Open the dashboard
+2. Click **Simulate Threat**
+3. Observe live agent execution
+4. Watch Band.ai display agent-to-agent collaboration
+5. Review generated Terraform remediation
+6. Approve deployment through the dashboard
+
+### Expected Outcome
+
+* Threat detected
+* Compliance validated
+* Terraform generated
+* Infrastructure audited
+* Human approval requested
+
+---
+
+# 🌟 What Makes CloudGuard AI Unique
+
+✅ Multi-agent security operations
+
+✅ Real-time AI collaboration visibility via Band.ai
+
+✅ Infrastructure-as-Code remediation generation
+
+✅ Compliance-aware decision making
+
+✅ Human-in-the-Loop governance
+
+✅ Enterprise-grade auditability
+
+✅ Purpose-built for regulated environments
+
+---
+
+# 🔮 Future Roadmap
+
+* Multi-cloud support (AWS, Azure, GCP)
+* Automated threat intelligence enrichment
+* SIEM integrations
+* Kubernetes remediation workflows
+* Security playbook generation
+* Compliance frameworks (SOC 2, ISO 27001, PCI-DSS)
+
+---
+
+# 🏁 Closing Statement
+
+CloudGuard AI demonstrates how multiple specialized AI agents can collaboratively accelerate security operations while preserving the governance, transparency, and human oversight required in high-stakes enterprise environments.
+
+By combining CrewAI, Band.ai, Terraform, AWS security telemetry, and human approval gates, CloudGuard AI delivers a practical blueprint for the next generation of AI-assisted Security Operations Centers.
