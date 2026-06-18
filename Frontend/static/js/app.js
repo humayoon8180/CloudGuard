@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const socket = io();
+    const socket = io({ transports: ['websocket'] });
 
     const threatContainer = document.getElementById('threat-container');
     const timelineContainer = document.getElementById('timeline-container');
