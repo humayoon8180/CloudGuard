@@ -13,26 +13,25 @@ import os
 import re
 import json
 import logging
-from crewai import Agent
-from langchain_groq import ChatGroq
+from crewai import Agent, LLM
 
 logger = logging.getLogger(__name__)
 
 # ── Shared LLM instance (created once, reused by all agents) ──────────────────
 # max_tokens kept at None to let Groq decide; temperature set per-agent.
 
-def build_llm(temperature: float = 0.1) -> ChatGroq:
+def build_llm(temperature: float = 0.1) -> LLM:
     """
-    Returns a Langchain ChatGroq instance pointed at Groq's llama-3.3-70b-versatile.
+    Returns a CrewAI LLM instance pointed at Groq's llama-3.3-70b-versatile.
 
     Args:
         temperature: Sampling temperature (0.0 = deterministic, 1.0 = creative).
 
     Returns:
-        Configured ChatGroq instance.
+        Configured LLM instance.
     """
-    return ChatGroq(
-        model_name="llama-3.3-70b-versatile",
+    return LLM(
+        model="groq/llama-3.3-70b-versatile",
         api_key=os.getenv("GROQ_API_KEY"),
         temperature=temperature,
     )
