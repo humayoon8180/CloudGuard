@@ -1,6 +1,10 @@
 import sys
 import os
 
+import crewai.llms.cache as _crewai_cache
+# Monkey-patch to prevent CrewAI from injecting unsupported Anthropic caching tags
+_crewai_cache.mark_cache_breakpoint = lambda msg: msg
+
 # FIX FOR WINDOWS CRASH: Prevent OpenBLAS Memory Allocation Error
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
