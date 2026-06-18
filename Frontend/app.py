@@ -7,6 +7,7 @@ os.environ["OMP_NUM_THREADS"] = "1"
 
 # FIX FOR GROQ CRASH: Drop unsupported cache_breakpoint parameters
 os.environ["LITELLM_DROP_PARAMS"] = "True"
+os.environ["LITELLM_STRICT_MODE"] = "True"
 
 sys.path.append(
     os.path.abspath(
