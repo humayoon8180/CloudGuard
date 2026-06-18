@@ -5,6 +5,9 @@ import os
 os.environ["OPENBLAS_NUM_THREADS"] = "1"
 os.environ["OMP_NUM_THREADS"] = "1"
 
+# FIX FOR GROQ CRASH: Drop unsupported cache_breakpoint parameters
+os.environ["LITELLM_DROP_PARAMS"] = "True"
+
 sys.path.append(
     os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..")
