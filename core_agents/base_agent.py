@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 def build_llm(temperature: float = 0.1) -> LLM:
     """
     Returns a CrewAI LLM instance pointed at Groq's llama-3.3-70b-versatile.
+    Uses the OpenAI compatibility layer to bypass litellm's Groq routing bugs.
 
     Args:
         temperature: Sampling temperature (0.0 = deterministic, 1.0 = creative).
@@ -31,7 +32,8 @@ def build_llm(temperature: float = 0.1) -> LLM:
         Configured LLM instance.
     """
     return LLM(
-        model="groq/llama-3.3-70b-versatile",
+        model="openai/llama-3.3-70b-versatile",
+        base_url="https://api.groq.com/openai/v1",
         api_key=os.getenv("GROQ_API_KEY"),
         temperature=temperature,
     )
